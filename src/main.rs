@@ -28,18 +28,18 @@ fn create_config_map(
     path: &str,
     permissions: Permissions,
     config: &str,
-) -> Result<(), std::io::Error> {
-    let mut f = OpenOptions::new().write(true).create_new(true).open(path)?;
-    f.write(config.as_bytes())?;
+) -> anyhow::Result<()> {
+    let mut f = OpenOptions::new().write(true).create_new(true).open(path).context("failed to create file")?;
+    f.write(config.as_bytes()).context("failed writing to file")?;
     let p = {
-        let mut perms = f.metadata()?.permissions();
+        let mut perms = f.metadata().context("unable to acquire file metadata")?.permissions();
         match permissions {
             Permissions::ReadOnly => perms.set_readonly(true),
             Permissions::ReadWrite => perms.set_readonly(false),
         }
         perms
     };
-    f.set_permissions(p)?;
+    f.set_permissions(p).context("failed setting file permissions")?;
     Ok(())
 }
 
@@ -58,12 +58,16 @@ pub fn main() -> anyhow::Result<()> {
                 let (pth, per, cfg_env) = value
                     .split_once(',')
                     .map(|(p, r)| {
-                        let (per, map) = r.split_once(',').expect("snd element should be split into per and cfg_env");
+                        let (per, map) = r
+                            .split_once(',')
+                            .expect("snd element should be split into per and cfg_env");
                         (p, per, map)
-                    }).expect("should end up with a triple");
-                let p: Permissions = serde_json::from_str(per).context("could not deserialize permissions")?;
+                    })
+                    .expect("should return a triple of &str");
+                let p: Permissions =
+                    serde_json::from_str(per).context("could not deserialize permissions")?;
                 let cfg = env::var(cfg_env).context("cfg_env not in env")?;
-                create_config_map(pth, p, &cfg).unwrap();
+                create_config_map(pth, p, &cfg).expect("unable to create configmap");
             }
             false => (),
         }
