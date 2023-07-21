@@ -1,4 +1,4 @@
-use std::{env, fs::OpenOptions, io::Write, path::PathBuf};
+use std::{env, fs::OpenOptions, io::Write};
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
@@ -17,9 +17,10 @@ enum Permissions {
     //    AllReadWrite,
 }
 
+// TODO: unused, can probably do without. Does it really add anything?
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ConfigTriple {
-    path: PathBuf,
+    path: String,
     permissions: Permissions,
     config_map: String,
 }
@@ -52,7 +53,6 @@ pub fn main() -> anyhow::Result<()> {
     for (key, value) in env::vars() {
         match key.as_str().ends_with("_CONFIGMAP") {
             true => {
-                println!("ConfigMap key: {key}\n{value}");
                 // TODO:cleanup
                 // Use std:str::split_once twice to return a (&str, &str, &str)
                 let (pth, per, cfg_env) = value
